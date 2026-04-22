@@ -124,24 +124,5 @@ export function compileEquation(expr: string): CompileResult | CompileError {
     return { ok: false, error: (e as Error).message };
   }
 
-  // Smoke-test at a few in-domain points to surface evaluation errors early.
-  const samples: Array<[number, number, number]> = [
-    [0, 0, 0],
-    [0.5, -0.5, 0],
-    [-1.2, 0.7, 0.3],
-    [1.1, 1.3, 0.9],
-  ];
-  for (const [x, y, t] of samples) {
-    let v: number;
-    try {
-      v = fn(x, y, t);
-    } catch (e) {
-      return { ok: false, error: `Runtime error: ${(e as Error).message}` };
-    }
-    if (!Number.isFinite(v)) {
-      // A NaN at one sample isn't fatal — user's field may have singularities —
-      // but it's suspicious. Allow it; the per-step guard will handle it.
-    }
-  }
   return { ok: true, fn };
 }
