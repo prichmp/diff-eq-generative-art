@@ -1,4 +1,4 @@
-import { parse, random, type MathNode } from 'mathjs';
+import { parse, type MathNode } from 'mathjs';
 
 export type CompiledExpr = (x: number, y: number, t: number) => number;
 
