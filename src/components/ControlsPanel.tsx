@@ -258,6 +258,7 @@ export function ControlsPanel({
               CAPS.maxFps,
               `Animation frame rate (${CAPS.minFps}–${CAPS.maxFps}). Playback re-samples the integrated path onto this many frames per second.`,
             )}
+            
           </div>
           {numberField(
             'seed',
@@ -269,6 +270,7 @@ export function ControlsPanel({
             'RNG seed for seed placement. Same seed + same settings = same picture. Use Randomize to pick a new one.',
           )}
         </div>
+        <button style={{marginTop: '5px'}} onClick={onRandomize}>Randomize Seed</button>
       </details>
 
       <div>
@@ -293,7 +295,7 @@ export function ControlsPanel({
         <button onClick={onStop} disabled={!busy}>
           Stop
         </button>
-        <button onClick={onRandomize}>Randomize</button>
+
         <button onClick={onSavePng}>Save PNG</button>
       </div>
 
