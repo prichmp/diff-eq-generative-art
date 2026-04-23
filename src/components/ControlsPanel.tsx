@@ -3,7 +3,7 @@ import { CAPS } from '../types';
 import { PRESETS } from '../presets';
 import { EquationInput } from './EquationInput';
 import { InfoTip } from './InfoTip';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Props {
   settings: ProblemAndSettings;
@@ -28,6 +28,14 @@ function numberField(
   info: string,
 ) {
   const [input, setInput] = useState<string>(value.toString(10))
+
+  useEffect(() => {
+    if(Number.isFinite(value))
+    {
+      setInput(value.toString(10))
+    }
+  }, [value])
+
   const isError = Number.isFinite(parseFloat(input));
   return (
     <label>
