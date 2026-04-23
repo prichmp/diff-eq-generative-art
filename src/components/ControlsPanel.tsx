@@ -3,6 +3,7 @@ import { CAPS } from '../types';
 import { PRESETS } from '../presets';
 import { EquationInput } from './EquationInput';
 import { InfoTip } from './InfoTip';
+import { useState } from 'react';
 
 interface Props {
   settings: ProblemAndSettings;
@@ -26,6 +27,8 @@ function numberField(
   max: number | undefined,
   info: string,
 ) {
+  const [input, setInput] = useState<string>(value.toString(10))
+  const isError = Number.isFinite(parseFloat(input));
   return (
     <label>
       <span>
@@ -34,13 +37,15 @@ function numberField(
       </span>
       <input
         type="number"
-        value={Number.isFinite(value) ? value : ''}
+        value={input}
         step={step}
         min={min}
         max={max}
+        style={{color: isError ? undefined : 'red', borderColor: isError ? undefined : 'red'}}
         onChange={(e) => {
+          setInput(e.target.value);
           const v = parseFloat(e.target.value);
-          if (Number.isFinite(v)) onChange(v);
+          if (Number.isFinite(v)) { onChange(v) };
         }}
       />
     </label>
@@ -258,7 +263,7 @@ export function ControlsPanel({
               CAPS.maxFps,
               `Animation frame rate (${CAPS.minFps}–${CAPS.maxFps}). Playback re-samples the integrated path onto this many frames per second.`,
             )}
-            
+
           </div>
           {numberField(
             'seed',
@@ -270,7 +275,7 @@ export function ControlsPanel({
             'RNG seed for seed placement. Same seed + same settings = same picture. Use Randomize to pick a new one.',
           )}
         </div>
-        <button style={{marginTop: '5px'}} onClick={onRandomize}>Randomize Seed</button>
+        <button style={{ marginTop: '5px' }} onClick={onRandomize}>Randomize Seed</button>
       </details>
 
       <div>
