@@ -3,10 +3,10 @@ import type { ProblemAndSettings } from './types';
 export const DEFAULT_SETTINGS: ProblemAndSettings = {
   dxExpr: 'sin(y) - 0.1 * x',
   dyExpr: '-sin(x) + 0.1 * y',
-  xmin: -6,
-  xmax: 6,
+  xmin: -8,
+  xmax: 8,
   density: 0.18,
-  overshoot: 1.5,
+  overshoot: 3,
   simTime: 20,
   steps: 1200,
   fps: 60,
