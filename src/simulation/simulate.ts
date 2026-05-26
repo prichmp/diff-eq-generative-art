@@ -1,6 +1,11 @@
 import { CAPS, type PackedSimulation, type ProblemAndSettings } from '../types';
 import { compileEquation } from './compileEquation';
-import { explicitRungeKutta4, type VectorField } from './rk4';
+import {
+  explicitRungeKutta4,
+  explicitRungeKutta4SecondOrder,
+  type VectorField,
+  type VectorField2,
+} from './rk4';
 import { mulberry32, poissonDiskSampling } from './sampling';
 
 export type SimulateProgress = (fraction: number) => void;
@@ -26,14 +31,32 @@ export function simulate(
   aspect: number,
   onProgress?: SimulateProgress,
 ): SimulateResult {
-  const dxCompile = compileEquation(settings.dxExpr);
-  if (!dxCompile.ok) return { ok: false, error: `dx/dt: ${dxCompile.error}` };
-  const dyCompile = compileEquation(settings.dyExpr);
-  if (!dyCompile.ok) return { ok: false, error: `dy/dt: ${dyCompile.error}` };
+  const isSecondOrder = settings.order === 2;
+  const dxLabel = isSecondOrder ? "x''" : 'dx/dt';
+  const dyLabel = isSecondOrder ? "y''" : 'dy/dt';
+
+  const dxCompile = compileEquation(settings.dxExpr, { allowDerivatives: isSecondOrder });
+  if (!dxCompile.ok) return { ok: false, error: `${dxLabel}: ${dxCompile.error}` };
+  const dyCompile = compileEquation(settings.dyExpr, { allowDerivatives: isSecondOrder });
+  if (!dyCompile.ok) return { ok: false, error: `${dyLabel}: ${dyCompile.error}` };
 
   const dx = dxCompile.fn;
   const dy = dyCompile.fn;
-  const field: VectorField = (x, y, t) => [dx(x, y, t), dy(x, y, t)];
+  const field: VectorField = (x, y, t) => [dx(x, y, 0, 0, t), dy(x, y, 0, 0, t)];
+  const field2: VectorField2 = (x, y, xp, yp, t) => [dx(x, y, xp, yp, t), dy(x, y, xp, yp, t)];
+
+  let vx0Fn: ((x: number, y: number) => number) | null = null;
+  let vy0Fn: ((x: number, y: number) => number) | null = null;
+  if (isSecondOrder) {
+    const vx0Compile = compileEquation(settings.vx0Expr);
+    if (!vx0Compile.ok) return { ok: false, error: `x'(0): ${vx0Compile.error}` };
+    const vy0Compile = compileEquation(settings.vy0Expr);
+    if (!vy0Compile.ok) return { ok: false, error: `y'(0): ${vy0Compile.error}` };
+    const vx0 = vx0Compile.fn;
+    const vy0 = vy0Compile.fn;
+    vx0Fn = (x, y) => vx0(x, y, 0, 0, 0);
+    vy0Fn = (x, y) => vy0(x, y, 0, 0, 0);
+  }
 
   const { xmin, xmax, density, overshoot, simTime, steps, seed } = settings;
 
@@ -90,12 +113,20 @@ export function simulate(
   const progressBucket = Math.max(1, Math.floor(paths / 40));
   for (let i = 0; i < paths; i++) {
     const [sx, sy] = seeds[i];
-    const { points, pointCount } = explicitRungeKutta4(field, {
-      time: simTime,
-      steps,
-      stopBox,
-      initial: [sx, sy],
-    });
+    const { points, pointCount } = isSecondOrder
+      ? explicitRungeKutta4SecondOrder(field2, {
+          time: simTime,
+          steps,
+          stopBox,
+          initial: [sx, sy],
+          initialVelocity: [vx0Fn!(sx, sy), vy0Fn!(sx, sy)],
+        })
+      : explicitRungeKutta4(field, {
+          time: simTime,
+          steps,
+          stopBox,
+          initial: [sx, sy],
+        });
     const sliced = points.subarray(0, 2 * pointCount);
     perPath[i] = sliced;
     totalPoints += pointCount;

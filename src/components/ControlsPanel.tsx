@@ -1,4 +1,4 @@
-import type { ColorScheme, ProblemAndSettings } from '../types';
+import type { ColorScheme, EquationOrder, ProblemAndSettings } from '../types';
 import { CAPS } from '../types';
 import { PRESETS } from '../presets';
 import { EquationInput } from './EquationInput';
@@ -62,8 +62,10 @@ function numberField(
   );
 }
 
-const EXPR_INFO =
-  'Variables: x, y, t. Functions: sin, cos, tan, exp, log, sqrt, abs, atan2, min, max, pow, floor, ceil, sign. Constants: pi, e. Operators: + - * / ^ and unary -.';
+const EXPR_FNS =
+  'Functions: sin, cos, tan, exp, log, ln, log10, log2, sqrt, abs, atan2, min, max, pow, floor, ceil, sign. Constants: pi, e. Operators: + - * / ^ and unary -.';
+const EXPR_INFO = `Variables: x, y, t. ${EXPR_FNS}`;
+const EXPR_INFO_2ND = `Variables: x, y, x', y' (velocities), t. ${EXPR_FNS}`;
 
 export function ControlsPanel({
   settings,
@@ -99,18 +101,61 @@ export function ControlsPanel({
       <div className="controls-scroll">
         <h1>Differential Equation Art</h1>
 
+      <label>
+        <span>
+          equation order
+          <InfoTip text="First order: dx/dt and dy/dt as functions of (x, y, t). Second order: x'' and y'' as functions of (x, y, x', y', t), plus initial velocities x'(0) and y'(0)." />
+        </span>
+        <select
+          value={settings.order}
+          onChange={(e) =>
+            onChange({ order: Number(e.target.value) as EquationOrder })
+          }
+        >
+          <option value={1}>first order</option>
+          <option value={2}>second order</option>
+        </select>
+      </label>
+
       <EquationInput
-        label="dx/dt"
+        label={settings.order === 2 ? "x''" : 'dx/dt'}
         value={settings.dxExpr}
         onChange={(v) => onChange({ dxExpr: v })}
-        info={`Rate of change of x as a function of position and time. ${EXPR_INFO}`}
+        info={
+          settings.order === 2
+            ? `Second derivative of x. ${EXPR_INFO_2ND}`
+            : `Rate of change of x as a function of position and time. ${EXPR_INFO}`
+        }
+        allowDerivatives={settings.order === 2}
       />
       <EquationInput
-        label="dy/dt"
+        label={settings.order === 2 ? "y''" : 'dy/dt'}
         value={settings.dyExpr}
         onChange={(v) => onChange({ dyExpr: v })}
-        info={`Rate of change of y as a function of position and time. ${EXPR_INFO}`}
+        info={
+          settings.order === 2
+            ? `Second derivative of y. ${EXPR_INFO_2ND}`
+            : `Rate of change of y as a function of position and time. ${EXPR_INFO}`
+        }
+        allowDerivatives={settings.order === 2}
       />
+
+      {settings.order === 2 && (
+        <>
+          <EquationInput
+            label="x'(0)"
+            value={settings.vx0Expr}
+            onChange={(v) => onChange({ vx0Expr: v })}
+            info={`Initial x-velocity as a function of seed position. ${EXPR_INFO}`}
+          />
+          <EquationInput
+            label="y'(0)"
+            value={settings.vy0Expr}
+            onChange={(v) => onChange({ vy0Expr: v })}
+            info={`Initial y-velocity as a function of seed position. ${EXPR_INFO}`}
+          />
+        </>
+      )}
 
       <div className="row">
         {numberField(
@@ -312,7 +357,9 @@ export function ControlsPanel({
           {PRESETS.map((p) => (
             <button
               key={p.name}
-              onClick={() => onChange(p.settings)}
+              onClick={() =>
+                onChange({ order: 1, vx0Expr: '0', vy0Expr: '0', ...p.settings })
+              }
               disabled={busy}
             >
               {p.name}

@@ -24,12 +24,31 @@ export default function App() {
     return workerRef.current;
   }, []);
 
-  const dxValid = useMemo(() => compileEquation(settings.dxExpr).ok, [settings.dxExpr]);
-  const dyValid = useMemo(() => compileEquation(settings.dyExpr).ok, [settings.dyExpr]);
-  const canRender = dxValid && dyValid && settings.xmax > settings.xmin;
+  const allowDerivatives = settings.order === 2;
+  const dxValid = useMemo(
+    () => compileEquation(settings.dxExpr, { allowDerivatives }).ok,
+    [settings.dxExpr, allowDerivatives],
+  );
+  const dyValid = useMemo(
+    () => compileEquation(settings.dyExpr, { allowDerivatives }).ok,
+    [settings.dyExpr, allowDerivatives],
+  );
+  const vx0Valid = useMemo(() => compileEquation(settings.vx0Expr).ok, [settings.vx0Expr]);
+  const vy0Valid = useMemo(() => compileEquation(settings.vy0Expr).ok, [settings.vy0Expr]);
+  const canRender =
+    dxValid &&
+    dyValid &&
+    (settings.order === 1 || (vx0Valid && vy0Valid)) &&
+    settings.xmax > settings.xmin;
 
   const patchSettings = useCallback((patch: Partial<ProblemAndSettings>) => {
-    setSettings((prev) => ({ ...prev, ...patch }));
+    setSettings((prev) => {
+      const next = { ...prev, ...patch };
+      if (patch.order !== undefined && patch.order !== prev.order && hasRenderedRef.current) {
+        setNeedsRerender(true);
+      }
+      return next;
+    });
   }, []);
 
   // Tear down animator and worker on unmount. Null the ref so a remount

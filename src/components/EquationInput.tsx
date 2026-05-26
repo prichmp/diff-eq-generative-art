@@ -7,10 +7,14 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   info?: string;
+  allowDerivatives?: boolean;
 }
 
-export function EquationInput({ label, value, onChange, info }: Props) {
-  const check = useMemo(() => compileEquation(value), [value]);
+export function EquationInput({ label, value, onChange, info, allowDerivatives }: Props) {
+  const check = useMemo(
+    () => compileEquation(value, { allowDerivatives }),
+    [value, allowDerivatives],
+  );
   const invalid = !check.ok;
   const errorMsg = check.ok ? null : check.error;
 

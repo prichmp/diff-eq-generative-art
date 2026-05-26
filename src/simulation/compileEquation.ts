@@ -1,6 +1,12 @@
 import { parse, type MathNode } from 'mathjs';
 
-export type CompiledExpr = (x: number, y: number, t: number) => number;
+export type CompiledExpr = (x: number, y: number, xp: number, yp: number, t: number) => number;
+
+export interface CompileOptions {
+  // When true, x' and y' are accepted in the expression as the first
+  // derivatives (velocities). Required for second-order equations.
+  allowDerivatives?: boolean;
+}
 
 const MATH_FNS: Record<string, (...args: number[]) => number> = {
   sin: Math.sin,
@@ -8,6 +14,9 @@ const MATH_FNS: Record<string, (...args: number[]) => number> = {
   tan: Math.tan,
   exp: Math.exp,
   log: Math.log,
+  ln: Math.log,
+  log10: Math.log10,
+  log2: Math.log2,
   sqrt: Math.sqrt,
   abs: Math.abs,
   atan2: Math.atan2,
@@ -27,7 +36,7 @@ const CONSTANTS: Record<string, number> = {
   E: Math.E,
 };
 
-function walk(node: MathNode): CompiledExpr {
+function walk(node: MathNode, allowDerivatives: boolean): CompiledExpr {
   const n = node as unknown as Record<string, unknown> & { type: string };
 
   switch (n.type) {
@@ -40,33 +49,46 @@ function walk(node: MathNode): CompiledExpr {
       const name = String(n.name);
       if (name === 'x') return (x) => x;
       if (name === 'y') return (_x, y) => y;
-      if (name === 't') return (_x, _y, t) => t;
+      if (name === 't') return (_x, _y, _xp, _yp, t) => t;
+      if (name === '__xp') {
+        if (!allowDerivatives) {
+          throw new Error(`x' is only available inside x'' / y'' of a second-order equation.`);
+        }
+        return (_x, _y, xp) => xp;
+      }
+      if (name === '__yp') {
+        if (!allowDerivatives) {
+          throw new Error(`y' is only available inside x'' / y'' of a second-order equation.`);
+        }
+        return (_x, _y, _xp, yp) => yp;
+      }
       if (name in CONSTANTS) {
         const v = CONSTANTS[name];
         return () => v;
       }
-      throw new Error(`Unknown symbol: ${name}. Allowed: x, y, t, pi, e.`);
+      const allowed = allowDerivatives ? "x, y, x', y', t, pi, e" : 'x, y, t, pi, e';
+      throw new Error(`Unknown symbol: ${name}. Allowed: ${allowed}.`);
     }
     case 'ParenthesisNode': {
-      return walk((n as unknown as { content: MathNode }).content);
+      return walk((n as unknown as { content: MathNode }).content, allowDerivatives);
     }
     case 'OperatorNode': {
       const op = String(n.op);
-      const args = (n.args as MathNode[]).map(walk);
+      const args = (n.args as MathNode[]).map((a) => walk(a, allowDerivatives));
       if (args.length === 1) {
         const [a] = args;
-        if (op === '-') return (x, y, t) => -a(x, y, t);
-        if (op === '+') return (x, y, t) => a(x, y, t);
+        if (op === '-') return (x, y, xp, yp, t) => -a(x, y, xp, yp, t);
+        if (op === '+') return (x, y, xp, yp, t) => a(x, y, xp, yp, t);
         throw new Error(`Unsupported unary operator: ${op}`);
       }
       if (args.length === 2) {
         const [a, b] = args;
         switch (op) {
-          case '+': return (x, y, t) => a(x, y, t) + b(x, y, t);
-          case '-': return (x, y, t) => a(x, y, t) - b(x, y, t);
-          case '*': return (x, y, t) => a(x, y, t) * b(x, y, t);
-          case '/': return (x, y, t) => a(x, y, t) / b(x, y, t);
-          case '^': return (x, y, t) => Math.pow(a(x, y, t), b(x, y, t));
+          case '+': return (x, y, xp, yp, t) => a(x, y, xp, yp, t) + b(x, y, xp, yp, t);
+          case '-': return (x, y, xp, yp, t) => a(x, y, xp, yp, t) - b(x, y, xp, yp, t);
+          case '*': return (x, y, xp, yp, t) => a(x, y, xp, yp, t) * b(x, y, xp, yp, t);
+          case '/': return (x, y, xp, yp, t) => a(x, y, xp, yp, t) / b(x, y, xp, yp, t);
+          case '^': return (x, y, xp, yp, t) => Math.pow(a(x, y, xp, yp, t), b(x, y, xp, yp, t));
         }
       }
       throw new Error(`Unsupported operator: ${op} (${args.length} args)`);
@@ -78,20 +100,20 @@ function walk(node: MathNode): CompiledExpr {
         throw new Error(`Unknown function: ${name}. Allowed: ${Object.keys(MATH_FNS).join(', ')}.`);
       }
       const fn = MATH_FNS[name];
-      const args = (n.args as MathNode[]).map(walk);
+      const args = (n.args as MathNode[]).map((a) => walk(a, allowDerivatives));
       if (args.length === 1) {
         const [a] = args;
-        return (x, y, t) => fn(a(x, y, t));
+        return (x, y, xp, yp, t) => fn(a(x, y, xp, yp, t));
       }
       if (args.length === 2) {
         const [a, b] = args;
-        return (x, y, t) => fn(a(x, y, t), b(x, y, t));
+        return (x, y, xp, yp, t) => fn(a(x, y, xp, yp, t), b(x, y, xp, yp, t));
       }
-      return (x, y, t) => fn(...args.map((a) => a(x, y, t)));
+      return (x, y, xp, yp, t) => fn(...args.map((a) => a(x, y, xp, yp, t)));
     }
     case 'UnaryMinusNode': {
-      const inner = walk((n as unknown as { content: MathNode }).content);
-      return (x, y, t) => -inner(x, y, t);
+      const inner = walk((n as unknown as { content: MathNode }).content, allowDerivatives);
+      return (x, y, xp, yp, t) => -inner(x, y, xp, yp, t);
     }
     default:
       throw new Error(`Unsupported expression node: ${n.type}`);
@@ -108,18 +130,30 @@ export interface CompileError {
   error: string;
 }
 
-export function compileEquation(expr: string): CompileResult | CompileError {
+export function compileEquation(
+  expr: string,
+  options: CompileOptions = {},
+): CompileResult | CompileError {
   const trimmed = expr.trim();
   if (!trimmed) return { ok: false, error: 'Expression is empty' };
+  // mathjs can't tokenize apostrophes inside identifiers, so rewrite x' and y'
+  // to internal symbols before parsing. Implicit multiplication handles 2x'.
+  const preprocessed = trimmed.replace(/([xy])'/g, '__$1p');
+  if (preprocessed.includes("'")) {
+    return {
+      ok: false,
+      error: "Stray apostrophe — only x' and y' (immediately after the letter) are recognized.",
+    };
+  }
   let ast: MathNode;
   try {
-    ast = parse(trimmed);
+    ast = parse(preprocessed);
   } catch (e) {
     return { ok: false, error: `Parse error: ${(e as Error).message}` };
   }
   let fn: CompiledExpr;
   try {
-    fn = walk(ast);
+    fn = walk(ast, options.allowDerivatives ?? false);
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }

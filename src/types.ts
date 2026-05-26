@@ -1,8 +1,13 @@
 export type ColorScheme = 'cornerRainbow' | 'hslAngle' | 'twoColor';
 
+export type EquationOrder = 1 | 2;
+
 export interface ProblemAndSettings {
+  order: EquationOrder;
   dxExpr: string;
   dyExpr: string;
+  vx0Expr: string;
+  vy0Expr: string;
   xmin: number;
   xmax: number;
   density: number;

@@ -1,8 +1,11 @@
 import type { ProblemAndSettings } from './types';
 
 export const DEFAULT_SETTINGS: ProblemAndSettings = {
+  order: 1,
   dxExpr: 'sin(y) - 0.1 * x',
   dyExpr: '-sin(x) + 0.1 * y',
+  vx0Expr: '0',
+  vy0Expr: '0',
   xmin: -8,
   xmax: 8,
   density: 0.18,
@@ -110,6 +113,39 @@ export const PRESETS: Preset[] = [
       xmax: 3,
       density: 0.07,
       simTime: 15,
+    },
+  },
+  {
+    // 2D simple harmonic oscillator: x'' = -x, y'' = -y. The initial velocity
+    // is set perpendicular to the radius vector, so each seed traces a circle
+    // of radius equal to its distance from the origin.
+    name: 'Harmonic Oscillator',
+    settings: {
+      order: 2,
+      dxExpr: "-x-0.5x'",
+      dyExpr: "-y-0.5y'",
+      vx0Expr: 'y',
+      vy0Expr: 'x',
+      xmin: -3,
+      xmax: 3,
+      density: 0.06,
+      overshoot: 1,
+      simTime: 20,
+    },
+  },
+    {
+    name: 'Waterfall',
+    settings: {
+      order: 2,
+      dxExpr: "sin(x')",
+      dyExpr: 'cos(x)',
+      vx0Expr: '0',
+      vy0Expr: '0',
+      xmin: -12,
+      xmax: 12,
+      density: 0.2,
+      overshoot: 3,
+      simTime: 14,
     },
   },
 ];
