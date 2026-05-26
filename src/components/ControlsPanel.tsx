@@ -16,6 +16,8 @@ interface Props {
   status: string;
   canRender: boolean;
   notice?: string | null;
+  open: boolean;
+  onToggle: () => void;
 }
 
 function numberField(
@@ -74,10 +76,28 @@ export function ControlsPanel({
   status,
   canRender,
   notice,
+  open,
+  onToggle,
 }: Props) {
   return (
-    <div className="controls">
-      <h1>Differential Equation Art</h1>
+    <div className={`controls${open ? '' : ' closed'}`} aria-hidden={!open}>
+      <button
+        className="controls-tab"
+        onClick={onToggle}
+        aria-label={open ? 'Close controls' : 'Open controls'}
+        aria-expanded={open}
+      >
+        {open ? '‹' : '›'}
+      </button>
+      <button
+        className="controls-close"
+        onClick={onToggle}
+        aria-label="Close controls"
+      >
+        ✕
+      </button>
+      <div className="controls-scroll">
+        <h1>Differential Equation Art</h1>
 
       <EquationInput
         label="dx/dt"
@@ -315,6 +335,7 @@ export function ControlsPanel({
       {notice && <div className="notice">{notice}</div>}
 
       <div className="status">{status}</div>
+      </div>
     </div>
   );
 }

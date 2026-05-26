@@ -12,6 +12,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('Ready.');
   const [needsRerender, setNeedsRerender] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animatorRef = useRef<Animator | null>(null);
   const workerRef = useRef<SimulationWorker | null>(null);
@@ -78,6 +79,7 @@ export default function App() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (!canRender) return;
+    if (window.innerWidth < 568) setControlsOpen(false);
     const worker = getWorker();
 
     currentJobRef.current?.cancel();
@@ -142,6 +144,8 @@ export default function App() {
   return (
     <div className="app">
       <ControlsPanel
+        open={controlsOpen}
+        onToggle={() => setControlsOpen((o) => !o)}
         settings={settings}
         onChange={patchSettings}
         onRender={render}
