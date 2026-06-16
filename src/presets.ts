@@ -148,4 +148,19 @@ export const PRESETS: Preset[] = [
       simTime: 14,
     },
   },
+      {
+    name: 'Square',
+    settings: {
+      order: 2,
+      dxExpr: "sin(x)",
+      dyExpr: 'cos(y)',
+      vx0Expr: '0',
+      vy0Expr: '0',
+      xmin: -12,
+      xmax: 12,
+      density: 0.2,
+      overshoot: 3,
+      simTime: 12,
+    },
+  },
 ];

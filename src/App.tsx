@@ -11,7 +11,7 @@ export default function App() {
   const [settings, setSettings] = useState<ProblemAndSettings>(DEFAULT_SETTINGS);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('Ready.');
-  const [needsRerender, setNeedsRerender] = useState(false);
+  const [rerenderReason, setRerenderReason] = useState<'resize' | 'order' | null>(null);
   const [controlsOpen, setControlsOpen] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animatorRef = useRef<Animator | null>(null);
@@ -45,7 +45,7 @@ export default function App() {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
       if (patch.order !== undefined && patch.order !== prev.order && hasRenderedRef.current) {
-        setNeedsRerender(true);
+        setRerenderReason('order');
       }
       return next;
     });
@@ -69,7 +69,7 @@ export default function App() {
   useEffect(() => {
     const onResize = () => {
       animatorRef.current?.resize();
-      if (hasRenderedRef.current) setNeedsRerender(true);
+      if (hasRenderedRef.current) setRerenderReason('resize');
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
@@ -105,7 +105,7 @@ export default function App() {
     animatorRef.current?.stop();
     setBusy(true);
     setStatus('Starting…');
-    setNeedsRerender(false);
+    setRerenderReason(null);
 
     const rect = canvas.getBoundingClientRect();
     const aspect = rect.width / Math.max(1, rect.height);
@@ -174,7 +174,13 @@ export default function App() {
         busy={busy}
         status={status}
         canRender={canRender}
-        notice={needsRerender ? 'Window was resized — click Render to rerun the simulation for the new aspect.' : null}
+        notice={
+          rerenderReason === 'order'
+            ? 'Equation order changed — click Render to rerun the simulation.'
+            : rerenderReason === 'resize'
+              ? 'Window was resized — click Render to rerun the simulation for the new aspect.'
+              : null
+        }
       />
       <CanvasStage ref={canvasRef} />
     </div>
